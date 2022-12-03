@@ -1,0 +1,8 @@
+# An empty request
+---
+# A response containing image data
+sensor_msgs/Image logitech_rgb
+sensor_msgs/Image realsense_rgb
+sensor_msgs/Image realsense_depth
+sensor_msgs/PointCloud2 realsense_pointcloud
+# MIGHT NEED TO INCLUDE TF2 OF THE AR SENSOR HERE

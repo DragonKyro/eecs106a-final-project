@@ -1,2 +1,2 @@
 joint_ctrl:planning
--DCATKIN_DEVEL_PREFIX=/home/cc/ee106a/fa22/class/ee106a-acb/ros_workspaces/proj/devel -DCMAKE_INSTALL_PREFIX=/home/cc/ee106a/fa22/class/ee106a-acb/ros_workspaces/proj/install -G Unix Makefiles
+-DCATKIN_DEVEL_PREFIX=/home/cc/ee120/fa22/class/ee120-aao/Desktop/eecs106a-final-project/path_planning/devel -DCMAKE_INSTALL_PREFIX=/home/cc/ee120/fa22/class/ee120-aao/Desktop/eecs106a-final-project/path_planning/install -G Unix Makefiles
