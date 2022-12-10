@@ -27,13 +27,6 @@ from jenga_helper import *
 
 INCH_TO_ROBO_UNIT = 0.0266
 INCH_TO_CAM_UNIT = 0.0265 # might be iffy, might be anisotropic
-JENGA_WIDTH_INCH = 1 # should be 15/16 but with leeway
-JENGA_HEIGHT_INCH = 9/16
-FIRST_JENGA_X = 0.409
-FIRST_JENGA_Y = -0.237
-SECOND_JENGA_X = FIRST_JENGA_X + INCH_TO_ROBO_UNIT
-SECOND_JENGA_Y = FIRST_JENGA_Y + INCH_TO_ROBO_UNIT
-TABLE_HEIGHT = -0.163
 
 def main():
     rp = intera_interface.RobotParams()
@@ -62,7 +55,7 @@ def main():
     side = valid_limbs[0]
     limb = intera_interface.Limb(side)
     limb.move_to_neutral()
-    rospy.sleep(1.5)
+    rospy.sleep(3.0)
 
     limb.set_joint_position_speed(0.11)
     
@@ -112,79 +105,33 @@ def main():
     rospy.sleep(0.2)
 
     # gripper_tip [0.450, 0.158, 0.079]. ar_tag [-0.32, -2.06, 6.39]
-    start_nums = [10,11,12,13,14,16,17,9,12, 0,9,3,9,6] #[16, 17, 11]
-    jenga_count = 0
+    start_nums = [12] #[16, 17, 11]
     for i, n in enumerate(start_nums):
-        row = jenga_count % 3
-        layer = jenga_count // 3
 
-        NUM_READINGS = 50
-        b = np.zeros(3)
-        b_or = np.zeros(4)
-        block_transform = tfBuffer.lookup_transform("ar_marker_15", f"ar_marker_{n}", rospy.Time())
-        btor = block_transform.transform.rotation
-        b_or = np.array([btor.x, btor.y, btor.z, btor.w])
         #block_transform = tfBuffer.lookup_transform("ar_marker_15", "usb_cam", rospy.Time())
-        for _ in range(NUM_READINGS):
-            block_transform = tfBuffer.lookup_transform("ar_marker_15", f"ar_marker_{n}", rospy.Time())
-            #final_transform = tfBuffer.lookup_transform("ar_marker_8", "ar_marker_17", rospy.Time())
-            bt = block_transform.transform.translation
-            b += np.array([bt.x, bt.y, bt.z])
-            rospy.sleep(0.01)
-        b = b / NUM_READINGS
-        # b_or = b_or / NUM_READINGS
-
+        block_transform = tfBuffer.lookup_transform("ar_marker_8", f"ar_marker_{n}", rospy.Time())
+        final_transform = tfBuffer.lookup_transform("ar_marker_8", "ar_marker_15", rospy.Time())
+        b = block_transform.transform.translation
         print("Translation", b)
-        xpiece_0, ypiece_0, zpiece_0 = b[2] + 0.105 + 0.00665 + (22/16 - 2)*INCH_TO_ROBO_UNIT, -b[0] - 0.0133 + (0) * INCH_TO_ROBO_UNIT, TABLE_HEIGHT #+ (len(start_nums) - i - 1) * 0.014#-b.z
+        xpiece_0, ypiece_0, zpiece_0 = b.z + 0.06, -b.x - 0.003, -0.170 #+ (len(start_nums) - i - 1) * 0.014#-b.z
         print("The expected position is", xpiece_0, ypiece_0, zpiece_0)
         # assert(zpiece_0 > -0.171)         # [0.458, 0.163, -0.132]
-        arm_t = tfBuffer.lookup_transform("reference/base", f"reference/right_gripper_tip", rospy.Time()).transform.translation
-        x_start, y_start, z_start = arm_t.x, arm_t.y, arm_t.z
 
-        # Pick up
         move_xy(limb, xpiece_0 - x_start, ypiece_0 - y_start)
-        roll, pitch, yaw = euler_from_quaternion(b_or[0], b_or[1], b_or[2], b_or[3])
-        hand = calc_hand_angle(limb.joint_angle("right_j0"), np.pi/2 - pitch, error = 0.19)
-        rotate_tip(limb, hand)
-        top_joints = move_z(limb, zpiece_0 - z_start)
+        move_z(limb, zpiece_0 - z_start)
         right_gripper.close()
         rospy.sleep(1.0)
-        move_z(limb, z_start - zpiece_0, custom_seed=top_joints)
+        move_z(limb, z_start - zpiece_0)
 
-        limb.move_to_neutral()
-        limb.set_joint_position_speed(0.11)
-        rospy.sleep(1.0)
 
-        # test:
-        # Translation: [0.494, 0.001, -0.159]
-        # Translation: [0.500, 0.018, -0.165]
-        # Drop Off
-
-        if layer % 2 == 0:
-            move_xy(limb, FIRST_JENGA_X - x_start, FIRST_JENGA_Y - y_start + row*(JENGA_WIDTH_INCH)*INCH_TO_ROBO_UNIT)
-            hand = calc_hand_angle(limb.joint_angle("right_j0"), np.pi, error = 0.36)
-            rotate_tip(limb, hand) 
-        else: #this is for even layers, we need to rotate by 90 and stuff
-            move_xy(limb, SECOND_JENGA_X - x_start + (1/8)*INCH_TO_ROBO_UNIT - row*(JENGA_WIDTH_INCH)*INCH_TO_ROBO_UNIT, SECOND_JENGA_Y - y_start + (2.5/8)*INCH_TO_ROBO_UNIT)
-            hand = calc_hand_angle(limb.joint_angle("right_j0"), np.pi/2, error = 0.36)
-            rotate_tip(limb, hand)
-        
-        move_z(limb, zpiece_0 - z_start + (layer)*JENGA_HEIGHT_INCH*INCH_TO_ROBO_UNIT + 0.0065)
+        f = final_transform.transform.translation
+        xpiece_final, ypiece_final, zpiece_final = f.z + 0.06, -f.x + 0.003, -0.170 + (i + 1) * 0.014
+        print("The expected position is", xpiece_final, ypiece_final, zpiece_final)
+        move_xy(limb, xpiece_final - xpiece_0, ypiece_final - ypiece_0)
+        move_z(limb, zpiece_final - z_start)
         right_gripper.open()
         rospy.sleep(1.0)
-        move_z(limb, z_start - zpiece_0 -  layer*JENGA_HEIGHT_INCH*INCH_TO_ROBO_UNIT)
-        jenga_count += 1
-
-
-
-        # f = final_transform.transform.translation
-        # xpiece_final, ypiece_final, zpiece_final = f.z + 0.06, -f.x + 0.003, -0.170 + (i + 1) * 0.014
-        # print("The expected position is", xpiece_final, ypiece_final, zpiece_final)
-        # move_xy(limb, xpiece_final - xpiece_0, ypiece_final - ypiece_0)
-        # move_z(limb, zpiece_final - z_start)
-        # right_gripper.open()
-        # rospy.sleep(1.0)
-        # move_z(limb, z_start - zpiece_final)
+        move_z(limb, z_start - zpiece_final)
 
 # -0.148 # -0.162
 

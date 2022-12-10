@@ -3,6 +3,7 @@ import argparse
 
 import rospy
 import numpy as np
+import math
 
 import tf2_ros
 
@@ -122,19 +123,24 @@ def ik_service_client(fk_response, joints, is_xy, delta_x, delta_y, delta_z):
         # rospy.loginfo("Response Message:\n%s", response)
     else:
         rospy.logerr("INVALID POSE - No Valid Joint Solution Found.")
+        print(response)
         rospy.logerr("Result Error %d", response.result_type[0])
         return False
 
     return limb_joints
 
-def move_z(limb, delta_z):
+def move_z(limb, delta_z, custom_seed = None):
     rospy.loginfo("Solving FK + IK")
-    fk_res, joints = fk_service_client(limb)
-    final_joints = ik_service_client(fk_res, joints, False, 0, 0, delta_z)
+    if not custom_seed:
+        fk_res, custom_seed = fk_service_client(limb)
+    else:
+        fk_res, _ = fk_service_client(limb)
+    final_joints = ik_service_client(fk_res, custom_seed, False, 0, 0, delta_z)
 
     rospy.loginfo("Moving to Z Destination")
     limb.move_to_joint_positions(final_joints)
     rospy.sleep(0.5)
+    return custom_seed
 
 def move_xy(limb, delta_x, delta_y):
     rospy.loginfo("Solving FK + IK")
@@ -155,3 +161,32 @@ def rotate_tip(limb, theta_final):
     limb.move_to_joint_positions(final_joints)
 
     rospy.sleep(1.0)
+
+# given base, target angle, what is correct hand angle
+def calc_hand_angle(base, target, error = 0):
+    hand = target + base + error
+    return hand
+
+def euler_from_quaternion(x, y, z, w):
+    """
+    Convert a quaternion into euler angles (roll, pitch, yaw)
+    roll is rotation around x in radians (counterclockwise)
+    pitch is rotation around y in radians (counterclockwise)
+    yaw is rotation around z in radians (counterclockwise)
+    """
+    t0 = +2.0 * (w * x + y * z)
+    t1 = +1.0 - 2.0 * (x * x + y * y)
+    roll_x = math.atan2(t0, t1)
+    
+    t2 = +2.0 * (w * y - z * x)
+    t2 = +1.0 if t2 > +1.0 else t2
+    t2 = -1.0 if t2 < -1.0 else t2
+    pitch_y = math.asin(t2)
+    if np.abs(w*x) > np.abs(y*z):
+        pitch_y = np.pi - pitch_y
+    
+    t3 = +2.0 * (w * z + x * y)
+    t4 = +1.0 - 2.0 * (y * y + z * z)
+    yaw_z = math.atan2(t3, t4)
+    
+    return roll_x, pitch_y, yaw_z # in radians

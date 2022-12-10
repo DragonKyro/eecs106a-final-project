@@ -33,7 +33,7 @@ FIRST_JENGA_X = 0.409
 FIRST_JENGA_Y = -0.237
 SECOND_JENGA_X = FIRST_JENGA_X + INCH_TO_ROBO_UNIT
 SECOND_JENGA_Y = FIRST_JENGA_Y + INCH_TO_ROBO_UNIT
-TABLE_HEIGHT = -0.163
+TABLE_HEIGHT = -0.164
 
 def main():
     rp = intera_interface.RobotParams()
@@ -112,7 +112,7 @@ def main():
     rospy.sleep(0.2)
 
     # gripper_tip [0.450, 0.158, 0.079]. ar_tag [-0.32, -2.06, 6.39]
-    start_nums = [10,11,12,13,14,16,17,9,12, 0,9,3,9,6] #[16, 17, 11]
+    start_nums = [10,11,12,13,14,16,17,8,9] #[16, 17, 11]
     jenga_count = 0
     for i, n in enumerate(start_nums):
         row = jenga_count % 3
@@ -161,11 +161,11 @@ def main():
         # Drop Off
 
         if layer % 2 == 0:
-            move_xy(limb, FIRST_JENGA_X - x_start, FIRST_JENGA_Y - y_start + row*(JENGA_WIDTH_INCH)*INCH_TO_ROBO_UNIT)
+            move_xy(limb, FIRST_JENGA_X - x_start, FIRST_JENGA_Y - y_start + row*(JENGA_WIDTH_INCH+(1/16))*INCH_TO_ROBO_UNIT)
             hand = calc_hand_angle(limb.joint_angle("right_j0"), np.pi, error = 0.36)
             rotate_tip(limb, hand) 
         else: #this is for even layers, we need to rotate by 90 and stuff
-            move_xy(limb, SECOND_JENGA_X - x_start + (1/8)*INCH_TO_ROBO_UNIT - row*(JENGA_WIDTH_INCH)*INCH_TO_ROBO_UNIT, SECOND_JENGA_Y - y_start + (2.5/8)*INCH_TO_ROBO_UNIT)
+            move_xy(limb, SECOND_JENGA_X - x_start + (1/8)*INCH_TO_ROBO_UNIT - row*(JENGA_WIDTH_INCH+(1/16))*INCH_TO_ROBO_UNIT, SECOND_JENGA_Y - y_start + (2.5/8)*INCH_TO_ROBO_UNIT)
             hand = calc_hand_angle(limb.joint_angle("right_j0"), np.pi/2, error = 0.36)
             rotate_tip(limb, hand)
         
